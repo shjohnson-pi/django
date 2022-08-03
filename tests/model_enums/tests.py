@@ -41,6 +41,43 @@ class Gender(models.TextChoices):
     __empty__ = "(Undeclared)"
 
 
+# # DEBUG
+# # Would this be better?
+# class Media(models.TextChoices):
+#     class Audio(models.TextChoices):
+#         VINYL = "vinyl"
+#         CD = "cd", "CD"
+#     class Video(models.TextChoices):
+#         VHS_TAPE = "vhs", "VHS Tape"
+#         DVD = "dvd", _("DVD")
+#     UNKNOWN = "unknown"
+# # END DEBUG
+
+
+class Media(models.TextChoices):
+    _named_group1 = "Audio"
+    VINYL = "vinyl"
+    CD = "cd", "CD"
+    _named_group2 = "Video"
+    VHS_TAPE = "vhs", "VHS Tape"
+    DVD = "dvd", _("DVD")
+    _named_group3 = None
+    UNKNOWN = "unknown"
+
+
+class Favorite(models.IntegerChoices):
+    NOTHING = 1
+    _named_group1 = _("Colors")
+    RED = 2
+    GREEN = 3
+    BLUE = 4
+    _named_group2 = "Food"
+    PIZZA = 5
+    ICE_CREAM = 6
+
+    __empty__ = _("(Unknown)")
+
+
 class ChoicesTests(SimpleTestCase):
     def test_integerchoices(self):
         self.assertEqual(
@@ -146,6 +183,91 @@ class ChoicesTests(SimpleTestCase):
         self.assertEqual(BlankStr.values, ["", "ONE"])
         self.assertEqual(BlankStr.names, ["EMPTY", "ONE"])
 
+    def test_namedgroups_integerchoices(self):
+        self.assertEqual(
+            Favorite.choices,
+            [
+                (None, "(Unknown)"),
+                (1, "Nothing"),
+                (
+                    "Colors",
+                    [
+                        (2, "Red"),
+                        (3, "Green"),
+                        (4, "Blue"),
+                    ],
+                ),
+                (
+                    "Food",
+                    [
+                        (5, "Pizza"),
+                        (6, "Ice Cream"),
+                    ],
+                ),
+            ],
+        )
+        self.assertEqual(
+            Favorite.labels,
+            ["(Unknown)", "Nothing", "Red", "Green", "Blue", "Pizza", "Ice Cream"],
+        )
+        self.assertEqual(Favorite.values, [None, 1, 2, 3, 4, 5, 6])
+        self.assertEqual(
+            Favorite.names,
+            ["__empty__", "NOTHING", "RED", "GREEN", "BLUE", "PIZZA", "ICE_CREAM"],
+        )
+
+        self.assertEqual(repr(Favorite.RED), "Favorite.RED")
+        self.assertEqual(Favorite.RED.label, "Red")
+        self.assertEqual(Favorite.RED.value, 2)
+        self.assertEqual(Favorite["RED"], Favorite.RED)
+        self.assertEqual(Favorite(2), Favorite.RED)
+
+        self.assertIsInstance(Favorite, type(models.Choices))
+        self.assertIsInstance(Favorite.RED, Favorite)
+        self.assertIsInstance(Favorite.RED.value, int)
+
+    def test_namedgroups_textchoices(self):
+        self.assertEqual(
+            Media.choices,
+            [
+                (
+                    "Audio",
+                    [
+                        ("vinyl", "Vinyl"),
+                        ("cd", "CD"),
+                    ],
+                ),
+                (
+                    "Video",
+                    [
+                        ("vhs", "VHS Tape"),
+                        ("dvd", "DVD"),
+                    ],
+                ),
+                ("unknown", "Unknown"),
+            ],
+        )
+        self.assertEqual(
+            Media.labels,
+            ["Vinyl", "CD", "VHS Tape", "DVD", "Unknown"],
+        )
+        self.assertEqual(Media.values, ["vinyl", "cd", "vhs", "dvd", "unknown"])
+        self.assertEqual(
+            Media.names,
+            ["VINYL", "CD", "VHS_TAPE", "DVD", "UNKNOWN"],
+        )
+
+        self.assertEqual(repr(Media.DVD), "Media.DVD")
+        self.assertEqual(Media.DVD.label, "DVD")
+        self.assertEqual(Media.DVD.value, "dvd")
+        self.assertEqual(Media["DVD"], Media.DVD)
+        self.assertEqual(Media("dvd"), Media.DVD)
+
+        self.assertIsInstance(Media, type(models.Choices))
+        self.assertIsInstance(Media.DVD, Media)
+        self.assertIsInstance(Media.DVD.label, Promise)
+        self.assertIsInstance(Media.DVD.value, str)
+
     def test_invalid_definition(self):
         msg = "'str' object cannot be interpreted as an integer"
         with self.assertRaisesMessage(TypeError, msg):
@@ -162,7 +284,7 @@ class ChoicesTests(SimpleTestCase):
                 PINEAPPLE = 1, "Pineapple"
 
     def test_str(self):
-        for test in [Gender, Suit, YearInSchool, Vehicle]:
+        for test in [Gender, Suit, YearInSchool, Vehicle, Media, Favorite]:
             for member in test:
                 with self.subTest(member=member):
                     self.assertEqual(str(test[member.name]), str(member.value))
@@ -182,6 +304,13 @@ class ChoicesTests(SimpleTestCase):
         self.assertEqual(Stationery.label.label, "Label")
         self.assertEqual(Stationery.label.value, "label")
         self.assertEqual(Stationery.label.name, "label")
+
+    def test_named_group_member(self):
+        # named_group can be used as a member.
+        Groups = models.TextChoices("Groups", "named_group big small")
+        self.assertEqual(Groups.named_group.label, "Named Group")
+        self.assertEqual(Groups.named_group.value, "named_group")
+        self.assertEqual(Groups.named_group.name, "named_group")
 
     def test_do_not_call_in_templates_member(self):
         # do_not_call_in_templates is not implicitly treated as a member.
