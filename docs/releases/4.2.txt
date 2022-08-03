@@ -184,7 +184,9 @@ Migrations
 Models
 ~~~~~~
 
-* ...
+* :ref:`Enumeration types <field-choices-enum-types>` such as ``TextChoices``,
+  ``IntegerChoices``, and ``Choices`` used to define :attr:`.Field.choices` now
+  support :ref:`named groups <field-choices-enum-named-groups>`.
 
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~

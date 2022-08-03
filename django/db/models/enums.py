@@ -11,8 +11,13 @@ class ChoicesMeta(enum.EnumMeta):
 
     def __new__(metacls, classname, bases, classdict, **kwds):
         labels = []
+        named_groups = []
+        named_group = None
         for key in classdict._member_names:
             value = classdict[key]
+            if key.startswith("_named_group"):
+                named_group = value
+                continue
             if (
                 isinstance(value, (list, tuple))
                 and len(value) > 1
@@ -23,12 +28,20 @@ class ChoicesMeta(enum.EnumMeta):
             else:
                 label = key.replace("_", " ").title()
             labels.append(label)
+            named_groups.append(named_group)
             # Use dict.__setitem__() to suppress defenses against double
             # assignment in enum's classdict.
             dict.__setitem__(classdict, key, value)
+        for key in set(classdict._member_names):
+            if key.startswith("_named_group"):
+                classdict.pop(key)
+                classdict._member_names.remove(key)
         cls = super().__new__(metacls, classname, bases, classdict, **kwds)
-        for member, label in zip(cls.__members__.values(), labels):
+        for member, label, named_group in zip(
+            cls.__members__.values(), labels, named_groups
+        ):
             member._label_ = label
+            member._named_group_ = named_group
         return enum.unique(cls)
 
     def __contains__(cls, member):
@@ -44,16 +57,34 @@ class ChoicesMeta(enum.EnumMeta):
 
     @property
     def choices(cls):
+        choices = []
+        choice_list = choices
+        last_named_group = None
+        for member in cls:
+            if member.named_group != last_named_group:
+                last_named_group = member.named_group
+                if member.named_group:
+                    choice_list = []
+                    choices.append((member.named_group, choice_list))
+                else:
+                    choice_list = choices  # Add to toplevel
+            choice_list.append((member.value, member.label))
+        empty = [(None, cls.__empty__)] if hasattr(cls, "__empty__") else []
+        return empty + choices
+
+    @property
+    def flatchoices(cls):
+        """Flattened version of choices tuple."""
         empty = [(None, cls.__empty__)] if hasattr(cls, "__empty__") else []
         return empty + [(member.value, member.label) for member in cls]
 
     @property
     def labels(cls):
-        return [label for _, label in cls.choices]
+        return [label for _, label in cls.flatchoices]
 
     @property
     def values(cls):
-        return [value for value, _ in cls.choices]
+        return [value for value, _ in cls.flatchoices]
 
 
 class Choices(enum.Enum, metaclass=ChoicesMeta):
@@ -62,6 +93,10 @@ class Choices(enum.Enum, metaclass=ChoicesMeta):
     @DynamicClassAttribute
     def label(self):
         return self._label_
+
+    @DynamicClassAttribute
+    def named_group(self):
+        return self._named_group_
 
     @property
     def do_not_call_in_templates(self):
