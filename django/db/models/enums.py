@@ -12,11 +12,17 @@ class ChoicesMeta(enum.EnumMeta):
     def __new__(metacls, classname, bases, classdict, **kwds):
         labels = []
         named_groups = []
-        named_group = None
-        for key in classdict._member_names:
+        key_order = []
+        for key in list(classdict._member_names):
             value = classdict[key]
-            if key.startswith("_named_group"):
-                named_group = value
+            # Check if value is a named group
+            if hasattr(value, "choices"):
+                named_group = value.__label__ if hasattr(value, "__label__") else key
+                for member in value:
+                    key_order.append(member.name)
+                    classdict[member.name] = member
+                    labels.append(member.label)
+                    named_groups.append(named_group)
                 continue
             if (
                 isinstance(value, (list, tuple))
@@ -27,19 +33,17 @@ class ChoicesMeta(enum.EnumMeta):
                 value = tuple(value)
             else:
                 label = key.replace("_", " ").title()
+            key_order.append(key)
             labels.append(label)
-            named_groups.append(named_group)
+            named_groups.append(None)
             # Use dict.__setitem__() to suppress defenses against double
             # assignment in enum's classdict.
             dict.__setitem__(classdict, key, value)
-        for key in set(classdict._member_names):
-            if key.startswith("_named_group"):
-                classdict.pop(key)
-                classdict._member_names.remove(key)
+        classdict._member_names.clear()
+        classdict._member_names.extend(key_order)
         cls = super().__new__(metacls, classname, bases, classdict, **kwds)
-        for member, label, named_group in zip(
-            cls.__members__.values(), labels, named_groups
-        ):
+        values = (cls.__members__[x] for x in key_order)
+        for member, label, named_group in zip(values, labels, named_groups):
             member._label_ = label
             member._named_group_ = named_group
         return enum.unique(cls)

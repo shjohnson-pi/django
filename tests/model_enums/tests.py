@@ -41,39 +41,31 @@ class Gender(models.TextChoices):
     __empty__ = "(Undeclared)"
 
 
-# # DEBUG
-# # Would this be better?
-# class Media(models.TextChoices):
-#     class Audio(models.TextChoices):
-#         VINYL = "vinyl"
-#         CD = "cd", "CD"
-#     class Video(models.TextChoices):
-#         VHS_TAPE = "vhs", "VHS Tape"
-#         DVD = "dvd", _("DVD")
-#     UNKNOWN = "unknown"
-# # END DEBUG
-
-
 class Media(models.TextChoices):
-    _named_group1 = "Audio"
-    VINYL = "vinyl"
-    CD = "cd", "CD"
-    _named_group2 = "Video"
-    VHS_TAPE = "vhs", "VHS Tape"
-    DVD = "dvd", _("DVD")
-    _named_group3 = None
+    class Audio(models.TextChoices):
+        VINYL = "vinyl"
+        CD = "cd", "CD"
+
+    class Video(models.TextChoices):
+        VHS_TAPE = "vhs", "VHS Tape"
+        DVD = "dvd", _("DVD")
+
     UNKNOWN = "unknown"
 
 
 class Favorite(models.IntegerChoices):
     NOTHING = 1
-    _named_group1 = _("Colors")
-    RED = 2
-    GREEN = 3
-    BLUE = 4
-    _named_group2 = "Food"
-    PIZZA = 5
-    ICE_CREAM = 6
+
+    class Colors(models.IntegerChoices):
+        RED = 2
+        GREEN = 3
+        BLUE = 4
+
+    class FoodGroup(models.IntegerChoices):
+        PIZZA = 5
+        ICE_CREAM = 6
+
+        __label__ = "Food"
 
     __empty__ = _("(Unknown)")
 
@@ -282,6 +274,24 @@ class ChoicesTests(SimpleTestCase):
             class Fruit(models.IntegerChoices):
                 APPLE = 1, "Apple"
                 PINEAPPLE = 1, "Pineapple"
+
+        msg = "Attempted to reuse key: 'ONE'"
+        with self.assertRaisesMessage(TypeError, msg):
+
+            class NamedGroup1(models.IntegerChoices):
+                ONE = 1
+
+                class Group1(models.IntegerChoices):
+                    ONE = 1
+
+        msg = "duplicate values found in <enum 'NamedGroup2'>: B -> A"
+        with self.assertRaisesMessage(ValueError, msg):
+
+            class NamedGroup2(models.IntegerChoices):
+                A = 1
+
+                class Group2(models.IntegerChoices):
+                    B = 1
 
     def test_str(self):
         for test in [Gender, Suit, YearInSchool, Vehicle, Media, Favorite]:

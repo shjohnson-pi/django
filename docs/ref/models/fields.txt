@@ -301,21 +301,19 @@ you can subclass ``Choices`` and the required concrete data type, e.g.
 .. _field-choices-enum-named-groups:
 
 Enumeration types support :ref:`named groups <field-choices-named-groups>`.
-An attribute that starts with ``_named_group`` will denote a new named group.
-This attribute can be set to ``None`` to make later members ungrouped.
-Members before any ``_named_group`` will be ungrouped. A ``.flatchoices``
+Use subclasses to denote named groups. A ``__label__`` property is available
+on subclasses if the inferred label is not enough. A ``.flatchoices``
 property is available if you need the flattened version of the choices. The
 ``MEDIA_CHOICES`` above can be represented by::
 
     >>> class Media(models.TextChoices):
-    ...     _named_group1 = 'Audio'
-    ...     VINYL = 'vinyl'
-    ...     CD = 'cd', 'CD'
-    ...     _named_group2 = 'Video'
-    ...     VHS_TAPE = 'vhs', 'VHS Tape'
-    ...     DVD = 'dvd', 'DVD'
-    ...     _named_group3 = None
-    ...     UNKNOWN = 'unknown'
+    ...     class Audio(models.TextChoices):
+    ...         VINYL = "vinyl"
+    ...         CD = "cd", "CD"
+    ...     class Video(models.TextChoices):
+    ...         VHS_TAPE = "vhs", "VHS Tape"
+    ...         DVD = "dvd", _("DVD")
+    ...     UNKNOWN = "unknown"
     >>> Media.choices
     [('Audio', [('vinyl', 'Vinyl'), ('cd', 'CD')]),
      ('Video', [('vhs', 'VHS Tape'), ('dvd', 'DVD')]),
